@@ -3,7 +3,7 @@
 
 #define NUM_ENTRY 15995634
 #define CRITEO_ENTRIES_SHM_NAME "/criteo_entries"
-#define CRITEO_ENTRIES_SHM_KEY 9487
+#define SORTED_CRITEO_ENTRIES_SHM_NAME "/sorted_criteo_entries"
 
 // CRITICAL: entry order is important, since scanf will append null-byte
 //           if the order in structure is diffent from the order in data
@@ -21,12 +21,10 @@ struct Entry {
 };
 
 extern Entry* criteo_entries;
-extern int sorted_criteo_entries_upt[NUM_ENTRY];
-extern int sorted_criteo_entries_pu[NUM_ENTRY];
-extern int sorted_criteo_entries_ut[NUM_ENTRY];
+extern int* sorted_criteo_entries_upt;
+extern int* sorted_criteo_entries_pu;
+extern int* sorted_criteo_entries_ut;
 
-void load_criteo_data();
-void sort_criteo_data();
 void init_criteo_data();
 
 #endif

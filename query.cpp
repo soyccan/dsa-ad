@@ -44,7 +44,7 @@ static inline bool cmp_u_l(int x, const char* y)
 }
 static inline bool cmp_u_r(const char* x, int y)
 {
-    return cmp_u_l(y, x);
+    return strncmp(x, criteo_entries[y].user_id, 32) < 0;
 }
 static inline bool cmp_p_l(int x, const char* y)
 {
@@ -52,7 +52,7 @@ static inline bool cmp_p_l(int x, const char* y)
 }
 static inline bool cmp_p_r(const char* x, int y)
 {
-    return cmp_p_l(y, x);
+    return strncmp(x, criteo_entries[y].product_id, 32) < 0;
 }
 static inline bool cmp_t_l(int x, int y)
 {
@@ -60,7 +60,7 @@ static inline bool cmp_t_l(int x, int y)
 }
 static inline bool cmp_t_r(int x, int y)
 {
-    return cmp_t_l(y, x);
+    return x < criteo_entries[y].click_time;
 }
 
 int get(const char* user_id, const char* product_id, int click_time)
@@ -107,6 +107,7 @@ int purchased(const char* user_id)
     int* r = std::upper_bound(sorted_criteo_entries_upt,
                               sorted_criteo_entries_upt + NUM_ENTRY, user_id,
                               cmp_u_r);
+    assert(l <= r);
 
     while (l != r) {
         DBG("purchased sale=%hhd index=%d user=%.32s product=%.32s time=%d "
