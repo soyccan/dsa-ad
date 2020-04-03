@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "database.h"
 #include "query.h"
 
 
@@ -11,8 +12,11 @@ int main()
     char arg[3][33];
     int iarg;
     float farg;
+    init_criteo_data();
     while (1) {
-        scanf("%9s", cmd);
+        if (scanf("%9s", cmd) == EOF)
+            break;
+
         if (strncmp(cmd, "get", sizeof cmd) == 0) {
             scanf("%32s %32s %d", arg[0], arg[1], &iarg);
             puts("********************");
