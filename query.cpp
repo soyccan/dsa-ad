@@ -23,36 +23,30 @@
 #include "query.h"
 
 #include <assert.h>
-#include <fcntl.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 #include <algorithm>
 
 #include "common.h"
 #include "database.h"
 
-static inline bool cmp_u_l(int x, const char* y)
+static inline bool cmp_u_l(int x, const FSNode* y)
 {
-    return strncmp(criteo_entries[x].user_id, y, 32) < 0;
+    return criteo_entries[x].user_id->rank < y->rank;
 }
-static inline bool cmp_u_r(const char* x, int y)
+static inline bool cmp_u_r(const FSNode* x, int y)
 {
-    return strncmp(x, criteo_entries[y].user_id, 32) < 0;
+    return x->rank < criteo_entries[y].user_id->rank;
 }
-static inline bool cmp_p_l(int x, const char* y)
+static inline bool cmp_p_l(int x, const FSNode* y)
 {
-    return strncmp(criteo_entries[x].product_id, y, 32) < 0;
+    return criteo_entries[x].product_id->rank < y->rank;
 }
-static inline bool cmp_p_r(const char* x, int y)
+static inline bool cmp_p_r(const FSNode* x, int y)
 {
-    return strncmp(x, criteo_entries[y].product_id, 32) < 0;
+    return x->rank < criteo_entries[y].product_id->rank;
 }
 static inline bool cmp_t_l(int x, int y)
 {
@@ -65,32 +59,35 @@ static inline bool cmp_t_r(int x, int y)
 
 int get(const char* user_id, const char* product_id, int click_time)
 {
-    init_criteo_data();
+    FSNode* fsu = fs_insert(fs_root, user_id);
+    FSNode* fsp = fs_insert(fs_root, product_id);
+    assert(fsu->rank != 0 && fsp->rank != 0);
 
     int *l, *r;
 
     l = std::lower_bound(sorted_criteo_entries_upt,
-                         sorted_criteo_entries_upt + NUM_ENTRY, user_id,
-                         cmp_u_l);
+                         sorted_criteo_entries_upt + NUM_ENTRY, fsu, cmp_u_l);
     r = std::upper_bound(sorted_criteo_entries_upt,
-                         sorted_criteo_entries_upt + NUM_ENTRY, user_id,
-                         cmp_u_r);
+                         sorted_criteo_entries_upt + NUM_ENTRY, fsu, cmp_u_r);
 
-    l = std::lower_bound(l, r, product_id, cmp_p_l);
-    r = std::upper_bound(l, r, product_id, cmp_p_r);
+    l = std::lower_bound(l, r, fsp, cmp_p_l);
+    r = std::upper_bound(l, r, fsp, cmp_p_r);
 
     l = std::lower_bound(l, r, click_time, cmp_t_l);
     r = std::upper_bound(l, r, click_time, cmp_t_r);
 
     if (l == sorted_criteo_entries_upt + NUM_ENTRY ||
-        strncmp(criteo_entries[*l].user_id, user_id, 32) != 0 ||
-        strncmp(criteo_entries[*l].product_id, product_id, 32) != 0 ||
+        criteo_entries[*l].user_id != fsu ||
+        criteo_entries[*l].product_id != fsp ||
         criteo_entries[*l].click_time != click_time)
         return -1;
 
-    DBG("get index=%d user_id=%.32s product=%.32s time=%d", *l,
-        criteo_entries[*l].user_id, criteo_entries[*l].product_id,
-        criteo_entries[*l].click_time);
+    DBGN("get index=%d time=%d", *l, criteo_entries[*l].click_time);
+    DBGN("    user=");
+    fs_print(criteo_entries[*l].user_id, stderr);
+    DBGN("    product=");
+    fs_print(criteo_entries[*l].product_id, stderr);
+    DBG("");
 
     printf("%d\n", criteo_entries[*l].sale);
 
@@ -99,14 +96,15 @@ int get(const char* user_id, const char* product_id, int click_time)
 
 int purchased(const char* user_id)
 {
-    init_criteo_data();
+    FSNode* fsu = fs_insert(fs_root, user_id);
+    assert(fsu->rank != 0);
 
-    int* l = std::lower_bound(sorted_criteo_entries_upt,
-                              sorted_criteo_entries_upt + NUM_ENTRY, user_id,
-                              cmp_u_l);
-    int* r = std::upper_bound(sorted_criteo_entries_upt,
-                              sorted_criteo_entries_upt + NUM_ENTRY, user_id,
-                              cmp_u_r);
+    int* l =
+        std::lower_bound(sorted_criteo_entries_upt,
+                         sorted_criteo_entries_upt + NUM_ENTRY, fsu, cmp_u_l);
+    int* r =
+        std::upper_bound(sorted_criteo_entries_upt,
+                         sorted_criteo_entries_upt + NUM_ENTRY, fsu, cmp_u_r);
     assert(l <= r);
 
     while (l != r) {
@@ -132,25 +130,27 @@ int purchased(const char* user_id)
 
 int clicked(const char* product_id1, const char* product_id2)
 {
-    init_criteo_data();
+    FSNode* fsp1 = fs_insert(fs_root, product_id1);
+    FSNode* fsp2 = fs_insert(fs_root, product_id2);
+    assert(fsp1->rank != 0 && fsp2->rank != 0);
 
-    int* l1 = std::lower_bound(sorted_criteo_entries_pu,
-                               sorted_criteo_entries_pu + NUM_ENTRY,
-                               product_id1, cmp_p_l);
-    int* r1 = std::upper_bound(sorted_criteo_entries_pu,
-                               sorted_criteo_entries_pu + NUM_ENTRY,
-                               product_id1, cmp_p_r);
+    int* l1 =
+        std::lower_bound(sorted_criteo_entries_pu,
+                         sorted_criteo_entries_pu + NUM_ENTRY, fsp1, cmp_p_l);
+    int* r1 =
+        std::upper_bound(sorted_criteo_entries_pu,
+                         sorted_criteo_entries_pu + NUM_ENTRY, fsp1, cmp_p_r);
 
-    int* l2 = std::lower_bound(sorted_criteo_entries_pu,
-                               sorted_criteo_entries_pu + NUM_ENTRY,
-                               product_id2, cmp_p_l);
-    int* r2 = std::upper_bound(sorted_criteo_entries_pu,
-                               sorted_criteo_entries_pu + NUM_ENTRY,
-                               product_id2, cmp_p_r);
+    int* l2 =
+        std::lower_bound(sorted_criteo_entries_pu,
+                         sorted_criteo_entries_pu + NUM_ENTRY, fsp2, cmp_p_l);
+    int* r2 =
+        std::upper_bound(sorted_criteo_entries_pu,
+                         sorted_criteo_entries_pu + NUM_ENTRY, fsp2, cmp_p_r);
 
     while (l1 != r1 && l2 != r2) {
-        int res = strncmp(criteo_entries[*l1].user_id,
-                          criteo_entries[*l2].user_id, 32);
+        int res = criteo_entries[*l1].user_id->rank -
+                  criteo_entries[*l2].user_id->rank;
         if (res < 0) {
             l1++;
         } else if (res > 0) {
@@ -162,11 +162,11 @@ int clicked(const char* product_id1, const char* product_id2)
             printf("%.32s\n", criteo_entries[*l1].user_id);
 
             int p = *l1;
-            while (l1 != r1 && strncmp(criteo_entries[p].user_id,
-                                       criteo_entries[*l1].user_id, 32) == 0)
+            while (l1 != r1 &&
+                   criteo_entries[p].user_id == criteo_entries[*l1].user_id)
                 l1++;
-            while (l2 != r2 && strncmp(criteo_entries[p].user_id,
-                                       criteo_entries[*l2].user_id, 32) == 0)
+            while (l2 != r2 &&
+                   criteo_entries[p].user_id == criteo_entries[*l2].user_id)
                 l2++;
         }
     }
@@ -175,13 +175,11 @@ int clicked(const char* product_id1, const char* product_id2)
 
 int profit(int from_time, float min_sales_per_click)
 {
-    init_criteo_data();
-
-    for (int i = 0; i < NUM_ENTRY; i++) {
+    for (int i = 0; i < NUM_ENTRY;) {
         int* r = sorted_criteo_entries_ut + i;
         while (r < sorted_criteo_entries_ut + NUM_ENTRY &&
-               strncmp(criteo_entries[sorted_criteo_entries_ut[i]].user_id,
-                       criteo_entries[*r].user_id, 32) == 0)
+               criteo_entries[sorted_criteo_entries_ut[i]].user_id ==
+                   criteo_entries[*r].user_id)
             r++;
 
         int* l =
@@ -202,6 +200,7 @@ int profit(int from_time, float min_sales_per_click)
 
             printf("%.32s\n", criteo_entries[*(l - 1)].user_id);
         }
+        i = r - sorted_criteo_entries_ut;  // TODO
     }
     return 0;
 }

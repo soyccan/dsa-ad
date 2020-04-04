@@ -5,8 +5,12 @@ CXXFLAGS := -Wall -Wextra -Wconversion -O2
 LD := ld
 LDFLAGS := -lrt
 
-SRC := main.cpp query.cpp query.h common.h database.cpp database.h database-preload.cpp
-OBJS := main.o query.o database.o
+SRC := main.cpp \
+	common.h \
+	query.cpp query.h \
+	database.cpp database.h \
+	fstring.cpp fstring.h
+OBJS := main.o query.o database.o fstring.o
 FILES := $(SRC) Makefile input output.ac
 
 DEBUG := 1
@@ -44,8 +48,8 @@ upload:
 remote-run: upload
 	ssh -p 9455 soyccan@bravo.nctu.me "cd /home/soyccan/Documents/dsa-ad ; make local-run DEBUG=$(DEBUG)"
 
-local-run: demo preload
-	time ./demo < input > output
+local-run: demo
+	time ./demo /tmp2/dsahw2/CriteoSearchData < input > output
 
 run:
 ifneq ($(shell hostname), soyccan-vm-server)

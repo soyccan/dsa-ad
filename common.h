@@ -1,3 +1,6 @@
+#ifndef _COMMON_H_
+#define _COMMON_H_ 1
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -30,4 +33,6 @@
 #else
 #define DBG(...)
 #define DBGN(...)
+#endif
+
 #endif

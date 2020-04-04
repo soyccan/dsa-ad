@@ -12,7 +12,7 @@ int main(int argc, const char** argv)
     char arg[3][33];
     int iarg;
     float farg;
-    init_criteo_data();
+    init_criteo_data(argv[1]);
     while (1) {
         if (scanf("%9s", cmd) == EOF)
             break;
