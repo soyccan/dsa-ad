@@ -8,9 +8,8 @@ LDFLAGS := -lrt
 SRC := main.cpp \
 	common.h \
 	query.cpp query.h \
-	database.cpp database.h \
-	fstring.cpp fstring.h
-OBJS := main.o query.o database.o fstring.o
+	database.cpp database.h
+OBJS := main.o query.o database.o
 FILES := $(SRC) Makefile input output.ac
 
 DEBUG := 1
@@ -42,14 +41,15 @@ preload: database-preload.cpp
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
 
 upload:
-	# scp -P 9455 $(FILES) soyccan@bravo.nctu.me:/home/soyccan/Documents/dsa-ad
-	scp $(FILES) b07902143@linux2.csie.ntu.edu.tw:/home/student/07/b07902143/dsa-ad
+	scp -P 9455 $(FILES) soyccan@bravo.nctu.me:/home/soyccan/Documents/dsa-ad
+	# scp $(FILES) b07902143@linux2.csie.ntu.edu.tw:/home/student/07/b07902143/dsa-ad
 
 remote-run: upload
 	ssh -p 9455 soyccan@bravo.nctu.me "cd /home/soyccan/Documents/dsa-ad ; make local-run DEBUG=$(DEBUG)"
 
 local-run: demo
-	time ./demo /tmp2/dsahw2/CriteoSearchData < input > output
+	time ./demo Criteo_Conversion_Search/CriteoSearchData < input > output
+	# time ./demo /tmp2/dsahw2/CriteoSearchData < input > output
 
 run:
 ifneq ($(shell hostname), soyccan-vm-server)

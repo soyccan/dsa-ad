@@ -32,21 +32,24 @@
 #include "common.h"
 #include "database.h"
 
-static inline bool cmp_u_l(int x, const FSNode* y)
+
+/* for cmp_?_? functions, we assume the string is valid bytes of length 16
+ */
+static inline bool cmp_u_l(int x, const uint8_t* y)
 {
-    return criteo_entries[x].user_id->rank < y->rank;
+    return memcmp(criteo_entries[x].user_id, y, 16);
 }
-static inline bool cmp_u_r(const FSNode* x, int y)
+static inline bool cmp_u_r(const uint8_t* x, int y)
 {
-    return x->rank < criteo_entries[y].user_id->rank;
+    return memcmp(x, criteo_entries[y].user_id, 16);
 }
-static inline bool cmp_p_l(int x, const FSNode* y)
+static inline bool cmp_p_l(int x, const uint8_t* y)
 {
-    return criteo_entries[x].product_id->rank < y->rank;
+    return memcmp(criteo_entries[x].product_id, y, 16);
 }
-static inline bool cmp_p_r(const FSNode* x, int y)
+static inline bool cmp_p_r(const uint8_t* x, int y)
 {
-    return x->rank < criteo_entries[y].product_id->rank;
+    return memcmp(x, criteo_entries[y].product_id, 16);
 }
 static inline bool cmp_t_l(int x, int y)
 {
@@ -59,34 +62,36 @@ static inline bool cmp_t_r(int x, int y)
 
 int get(const char* user_id, const char* product_id, int click_time)
 {
-    FSNode* fsu = fs_insert(fs_root, user_id);
-    FSNode* fsp = fs_insert(fs_root, product_id);
-    assert(fsu->rank != 0 && fsp->rank != 0);
+    uint8_t bu[16], bp[16];
+    G(__hexcpy(bu, user_id, 32));
+    G(__hexcpy(bp, product_id, 32));
 
     int *l, *r;
 
     l = std::lower_bound(sorted_criteo_entries_upt,
-                         sorted_criteo_entries_upt + NUM_ENTRY, fsu, cmp_u_l);
+                         sorted_criteo_entries_upt + NUM_ENTRY, bu, cmp_u_l);
     r = std::upper_bound(sorted_criteo_entries_upt,
-                         sorted_criteo_entries_upt + NUM_ENTRY, fsu, cmp_u_r);
+                         sorted_criteo_entries_upt + NUM_ENTRY, bu, cmp_u_r);
 
-    l = std::lower_bound(l, r, fsp, cmp_p_l);
-    r = std::upper_bound(l, r, fsp, cmp_p_r);
+    l = std::lower_bound(l, r, bp, cmp_p_l);
+    r = std::upper_bound(l, r, bp, cmp_p_r);
 
     l = std::lower_bound(l, r, click_time, cmp_t_l);
     r = std::upper_bound(l, r, click_time, cmp_t_r);
 
     if (l == sorted_criteo_entries_upt + NUM_ENTRY ||
-        criteo_entries[*l].user_id != fsu ||
-        criteo_entries[*l].product_id != fsp ||
-        criteo_entries[*l].click_time != click_time)
+        memcmp(criteo_entries[*l].user_id, bu, 16) != 0 ||
+        memcmp(criteo_entries[*l].product_id, bp, 16) != 0 ||
+        criteo_entries[*l].click_time != click_time) {
+        DBG("not found");
         return -1;
+    }
 
     DBGN("get index=%d time=%d", *l, criteo_entries[*l].click_time);
     DBGN("    user=");
-    fs_print(criteo_entries[*l].user_id, stderr);
+    __bytesprint(stderr, criteo_entries[*l].user_id, 16);
     DBGN("    product=");
-    fs_print(criteo_entries[*l].product_id, stderr);
+    __bytesprint(stderr, criteo_entries[*l].product_id, 16);
     DBG("");
 
     printf("%d\n", criteo_entries[*l].sale);
@@ -96,15 +101,15 @@ int get(const char* user_id, const char* product_id, int click_time)
 
 int purchased(const char* user_id)
 {
-    FSNode* fsu = fs_insert(fs_root, user_id);
-    assert(fsu->rank != 0);
+    uint8_t bu[16];
+    G(__hexcpy(bu, user_id, 32));
 
     int* l =
         std::lower_bound(sorted_criteo_entries_upt,
-                         sorted_criteo_entries_upt + NUM_ENTRY, fsu, cmp_u_l);
+                         sorted_criteo_entries_upt + NUM_ENTRY, bu, cmp_u_l);
     int* r =
         std::upper_bound(sorted_criteo_entries_upt,
-                         sorted_criteo_entries_upt + NUM_ENTRY, fsu, cmp_u_r);
+                         sorted_criteo_entries_upt + NUM_ENTRY, bu, cmp_u_r);
     assert(l <= r);
 
     while (l != r) {
@@ -130,27 +135,26 @@ int purchased(const char* user_id)
 
 int clicked(const char* product_id1, const char* product_id2)
 {
-    FSNode* fsp1 = fs_insert(fs_root, product_id1);
-    FSNode* fsp2 = fs_insert(fs_root, product_id2);
-    assert(fsp1->rank != 0 && fsp2->rank != 0);
+    uint8_t bp1[16], bp2[16];
+    G(__hexcpy(bp1, product_id1, 32));
+    G(__hexcpy(bp2, product_id2, 32));
 
     int* l1 =
         std::lower_bound(sorted_criteo_entries_pu,
-                         sorted_criteo_entries_pu + NUM_ENTRY, fsp1, cmp_p_l);
+                         sorted_criteo_entries_pu + NUM_ENTRY, bp1, cmp_p_l);
     int* r1 =
         std::upper_bound(sorted_criteo_entries_pu,
-                         sorted_criteo_entries_pu + NUM_ENTRY, fsp1, cmp_p_r);
+                         sorted_criteo_entries_pu + NUM_ENTRY, bp1, cmp_p_r);
 
     int* l2 =
         std::lower_bound(sorted_criteo_entries_pu,
-                         sorted_criteo_entries_pu + NUM_ENTRY, fsp2, cmp_p_l);
+                         sorted_criteo_entries_pu + NUM_ENTRY, bp2, cmp_p_l);
     int* r2 =
         std::upper_bound(sorted_criteo_entries_pu,
-                         sorted_criteo_entries_pu + NUM_ENTRY, fsp2, cmp_p_r);
+                         sorted_criteo_entries_pu + NUM_ENTRY, bp2, cmp_p_r);
 
     while (l1 != r1 && l2 != r2) {
-        int res = criteo_entries[*l1].user_id->rank -
-                  criteo_entries[*l2].user_id->rank;
+        int res = cmp_u(*l1, *l2);
         if (res < 0) {
             l1++;
         } else if (res > 0) {

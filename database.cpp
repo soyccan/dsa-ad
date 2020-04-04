@@ -1,4 +1,5 @@
 
+// TODO: do strncmp behave correctly on unsigned char?
 #include "database.h"
 
 #include <stdlib.h>
@@ -14,17 +15,15 @@ Entry* criteo_entries;
 int* sorted_criteo_entries_upt;
 int* sorted_criteo_entries_pu;
 int* sorted_criteo_entries_ut;
-FSNode* fs_root;
 
 
 static inline bool cmp_upt(int x, int y)
 {
     int res;
-    res = criteo_entries[x].user_id->rank - criteo_entries[y].user_id->rank;
+    res = cmp_u(x, y);
     if (res != 0)
         return res < 0;
-    res =
-        criteo_entries[x].product_id->rank - criteo_entries[y].product_id->rank;
+    res = cmp_p(x, y);
     if (res != 0)
         return res < 0;
     res = criteo_entries[x].click_time - criteo_entries[y].click_time;
@@ -34,18 +33,17 @@ static inline bool cmp_upt(int x, int y)
 static inline bool cmp_pu(int x, int y)
 {
     int res;
-    res =
-        criteo_entries[x].product_id->rank - criteo_entries[y].product_id->rank;
+    res = cmp_p(x, y);
     if (res != 0)
         return res < 0;
-    res = criteo_entries[x].user_id->rank - criteo_entries[y].user_id->rank;
+    res = cmp_u(x, y);
     return res < 0;
 }
 
 static inline bool cmp_ut(int x, int y)
 {
     int res;
-    res = criteo_entries[x].user_id->rank - criteo_entries[y].user_id->rank;
+    res = cmp_u(x, y);
     if (res != 0)
         return res < 0;
     res = criteo_entries[x].click_time - criteo_entries[y].click_time;
@@ -55,9 +53,6 @@ static inline bool cmp_ut(int x, int y)
 static void __sort_criteo_data()
 {
     // TODO:  qsort vs. std::sort, which faster?
-
-    GG(fs_init(&fs_root, NULL), NULL);
-    fs_sort(fs_root);
 
     GG(sorted_criteo_entries_upt =
            reinterpret_cast<int*>(malloc(NUM_ENTRY * sizeof(int))),
@@ -105,6 +100,8 @@ static void __load_criteo_data(const char* criteo_filename)
 
     int i = 0;
     for (i = 0; i < NUM_ENTRY; i++) {
+        criteo_entries[i].flag = 0;
+
         if (fgets(buf, 0x400, fs) == NULL)
             break;
 
@@ -129,16 +126,30 @@ static void __load_criteo_data(const char* criteo_filename)
                 strncpy(criteo_entries[i].product_age_group, ps, 32);
             else if (j == 9)
                 strncpy(criteo_entries[i].product_gender, ps, 32);
-            else if (j == 19)
-                criteo_entries[i].product_id = fs_insert(fs_root, ps);
-            else if (j == 22)
-                criteo_entries[i].user_id = fs_insert(fs_root, ps);
+            else if (j == 19) {
+                if (strncmp(ps, "-1", 32) == 0)
+                    criteo_entries[i].flag |= 1;
+                else if (*ps == '\0')
+                    criteo_entries[i].flag |= 2;
+                else
+                    __hexcpy(criteo_entries[i].product_id, ps, 32);
+            } else if (j == 22) {
+                if (strncmp(ps, "-1", 32) == 0)
+                    criteo_entries[i].flag |= 4;
+                else if (*ps == '\0')
+                    criteo_entries[i].flag |= 8;
+                else
+                    __hexcpy(criteo_entries[i].user_id, ps, 32);
+            }
         }
-
-        // DBG("i:%d user:%.32s product:%.32s time:%u", i,
-        //     criteo_entries[i].user_id,
-        //     criteo_entries[i].product_id,
-        //     criteo_entries[i].click_time);
+        DBGN("i:%d user:%.16s product:%.16s time:%u", i,
+             criteo_entries[i].user_id, criteo_entries[i].product_id,
+             criteo_entries[i].click_time);
+        DBGN(" user:");
+        __bytesprint(stderr, criteo_entries[i].user_id, 16);
+        DBGN(" product:");
+        __bytesprint(stderr, criteo_entries[i].product_id, 16);
+        DBG("");
     }
     DBG("loaded entries: %d", i);  // 15995634
     fclose(fs);
