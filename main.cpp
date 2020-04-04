@@ -6,7 +6,7 @@
 #include "query.h"
 
 
-int main()
+int main(int argc, const char** argv)
 {
     char cmd[10];
     char arg[3][33];

@@ -103,10 +103,12 @@ static void sort_criteo_data()
     std::sort(preload_sorted_criteo_entries_ut,
               preload_sorted_criteo_entries_ut + NUM_ENTRY, cmp_ut);
 
+    DBG("sort complete");
+
     munmap(preload_sorted_criteo_entries, sce_len);
 }
 
-static void preload_criteo_data()
+static void preload_criteo_data(const char* criteo_filename)
 {
     FILE* fs;
     size_t ce_len;
@@ -134,7 +136,7 @@ static void preload_criteo_data()
     G(close(shmfd));
 
 
-    GG(fs = fopen("Criteo_Conversion_Search/CriteoSearchData", "r"), NULL);
+    GG(fs = fopen(criteo_filename, "r"), NULL);
 
     int i = 0;
     for (i = 0; i < NUM_ENTRY; i++) {
@@ -181,9 +183,10 @@ static void preload_criteo_data()
 
     munmap(preload_criteo_entries, ce_len);
 }
-int main()
+
+int main(int argc, const char** argv)
 {
-    preload_criteo_data();
+    preload_criteo_data(argv[1]);
     pause();
     shm_unlink(CRITEO_ENTRIES_SHM_NAME);
     shm_unlink(SORTED_CRITEO_ENTRIES_SHM_NAME);
