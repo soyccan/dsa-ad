@@ -1,4 +1,4 @@
-/* faster string
+/* faster string, using trie
  */
 #include "fstring.h"
 
