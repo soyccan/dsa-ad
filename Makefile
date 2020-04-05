@@ -1,5 +1,5 @@
 CXX := clang++
-CXXFLAGS := -Wall -Wextra -Wconversion -O2
+CXXFLAGS := -Wall -Wextra -Wconversion -O3
 LDFLAGS :=
 
 # shm_open

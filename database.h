@@ -21,6 +21,7 @@ extern Entry* criteo_entries;
 extern int* sorted_criteo_entries_upt;
 extern int* sorted_criteo_entries_pu;
 extern int* sorted_criteo_entries_ut;
+
 extern char (*keys)[32];
 extern int keys_len;
 

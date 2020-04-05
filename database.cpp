@@ -19,39 +19,6 @@ char (*keys)[32];
 int keys_len;
 
 
-static inline bool cmp_upt(int x, int y)
-{
-    int res;
-    res = criteo_entries[x].user_id - criteo_entries[y].user_id;
-    if (res != 0)
-        return res < 0;
-    res = criteo_entries[x].product_id - criteo_entries[y].product_id;
-    if (res != 0)
-        return res < 0;
-    res = criteo_entries[x].click_time - criteo_entries[y].click_time;
-    return res < 0;
-}
-
-static inline bool cmp_pu(int x, int y)
-{
-    int res;
-    res = criteo_entries[x].product_id - criteo_entries[y].product_id;
-    if (res != 0)
-        return res < 0;
-    res = criteo_entries[x].user_id - criteo_entries[y].user_id;
-    return res < 0;
-}
-
-static inline bool cmp_ut(int x, int y)
-{
-    int res;
-    res = criteo_entries[x].user_id - criteo_entries[y].user_id;
-    if (res != 0)
-        return res < 0;
-    res = criteo_entries[x].click_time - criteo_entries[y].click_time;
-    return res < 0;
-}
-
 static void __sort_keys()
 {
     char(*buf)[32];
@@ -125,14 +92,30 @@ static void __sort_criteo_data()
 
     // 0: sorted by (user_id, product_id, click_time)
     FOR(j, 0, NUM_ENTRY) { sorted_criteo_entries_upt[j] = j; }
-    __gnu_parallel::sort(sorted_criteo_entries_upt,
-                         sorted_criteo_entries_upt + NUM_ENTRY, cmp_upt);
+    __gnu_parallel::sort(
+        sorted_criteo_entries_upt, sorted_criteo_entries_upt + NUM_ENTRY,
+        [](int x, int y) {
+            int res = criteo_entries[x].user_id - criteo_entries[y].user_id;
+            if (res != 0)
+                return res < 0;
+            res = criteo_entries[x].product_id - criteo_entries[y].product_id;
+            if (res != 0)
+                return res < 0;
+            return criteo_entries[x].click_time < criteo_entries[y].click_time;
+        });
     // FOR(j, 0, NUM_ENTRY) DBG("upt[%d]=%d", j, sorted_criteo_entries_upt[j]);
 
     // 1: sorted by (product_id, user_id)
     FOR(j, 0, NUM_ENTRY) { sorted_criteo_entries_pu[j] = j; }
-    __gnu_parallel::sort(sorted_criteo_entries_pu,
-                         sorted_criteo_entries_pu + NUM_ENTRY, cmp_pu);
+    __gnu_parallel::sort(
+        sorted_criteo_entries_pu, sorted_criteo_entries_pu + NUM_ENTRY,
+        [](int x, int y) {
+            int res;
+            res = criteo_entries[x].product_id - criteo_entries[y].product_id;
+            if (res != 0)
+                return res < 0;
+            return criteo_entries[x].user_id < criteo_entries[y].user_id;
+        });
     // FOR(j, 0, NUM_ENTRY) DBG("pu[%d]=%d", j, sorted_criteo_entries_pu[j]);
 
     // 2: sorted by (user_id, click_time)
@@ -140,8 +123,14 @@ static void __sort_criteo_data()
     {
         sorted_criteo_entries_ut[j] = sorted_criteo_entries_upt[j];
     }
-    __gnu_parallel::sort(sorted_criteo_entries_ut,
-                         sorted_criteo_entries_ut + NUM_ENTRY, cmp_ut);
+    __gnu_parallel::sort(
+        sorted_criteo_entries_ut, sorted_criteo_entries_ut + NUM_ENTRY,
+        [](int x, int y) {
+            int res = criteo_entries[x].user_id - criteo_entries[y].user_id;
+            if (res != 0)
+                return res < 0;
+            return criteo_entries[x].click_time < criteo_entries[y].click_time;
+        });
     // FOR(j, 0, NUM_ENTRY) DBG("ut[%d]=%d", j, sorted_criteo_entries_ut[j]);
 
     DBG("sort complete");
@@ -185,17 +174,20 @@ static void __load_criteo_data(const char* criteo_filename)
             else if (j == 3)
                 criteo_entries[i].click_time = atoi(ps);
             else if (j == 5)
-                strncpy(criteo_entries[i].product_price, ps, 32);
+                strncpy(criteo_entries[i].product_price, ps,
+                        sizeof criteo_entries[i].product_price);
             else if (j == 6)
-                strncpy(criteo_entries[i].product_age_group, ps, 32);
+                strncpy(criteo_entries[i].product_age_group, ps,
+                        sizeof criteo_entries[i].product_age_group);
             else if (j == 9)
-                strncpy(criteo_entries[i].product_gender, ps, 32);
+                strncpy(criteo_entries[i].product_gender, ps,
+                        sizeof criteo_entries[i].product_gender);
             else if (j == 19) {
-                strncpy(keys[keys_len], ps, 32);
+                strncpy(keys[keys_len], ps, sizeof keys[0]);
                 criteo_entries[i].product_id = static_cast<int>(keys_len);
                 keys_len++;
             } else if (j == 22) {
-                strncpy(keys[keys_len], ps, 32);
+                strncpy(keys[keys_len], ps, sizeof keys[0]);
                 criteo_entries[i].user_id = static_cast<int>(keys_len);
                 keys_len++;
             }
