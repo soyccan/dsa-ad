@@ -220,6 +220,8 @@ int profit(int from_time, float min_sales_per_click)
                 keys[criteo_entries[*(l - 1)].user_id]);
 
             printf("%.32s\n", keys[criteo_entries[*(l - 1)].user_id]);
+            if (cnt >= 10)
+                break;
         }
         i = r;
     }
