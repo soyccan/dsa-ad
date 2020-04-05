@@ -2,11 +2,14 @@ CC := gcc
 CFLAGS := -Wall -Wextra -Wconversion
 CXX := g++
 CXXFLAGS := -Wall -Wextra -Wconversion -O2
-LD := g++
 LDFLAGS :=
 
 # shm_open
 # LDFLAGS += -lrt
+
+# parellel support
+CXXFLAGS += -fopenmp -D_GLIBCXX_PARALLEL -march=native
+LDFLAGS += -fopenmp
 
 SRC := main.cpp \
 	common.h \
@@ -38,13 +41,13 @@ endif
 	$(CXX) $(CXXFLAGS) -c -o $@ $^
 
 demo: $(OBJS)
-	$(LD) $(LDFLAGS) -o $@ $^
+	$(CXX) $(LDFLAGS) -o $@ $^
 
 # preload: database-preload.cpp
 # 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
 
 upload:
-	# scp -P 9455 $(FILES) soyccan@bravo.nctu.me:/home/soyccan/Documents/dsa-ad
+	scp -P 9455 $(FILES) soyccan@bravo.nctu.me:/home/soyccan/Documents/dsa-ad
 	scp $(FILES) b07902143@linux2.csie.ntu.edu.tw:/home/student/07/b07902143/dsa-ad
 
 remote-run: upload

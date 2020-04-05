@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include <algorithm>
+#include <parallel/algorithm>
 
 #include "common.h"
 
@@ -66,21 +67,24 @@ static void __sort_criteo_data()
 
     // 0: sorted by (user_id, product_id, click_time)
     FOR(j, 0, NUM_ENTRY) { sorted_criteo_entries_upt[j] = j; }
-    std::sort(sorted_criteo_entries_upt, sorted_criteo_entries_upt + NUM_ENTRY,
-              cmp_upt);
+    __gnu_parallel::sort(sorted_criteo_entries_upt,
+                         sorted_criteo_entries_upt + NUM_ENTRY, cmp_upt);
+    // FOR(j, 0, NUM_ENTRY) DBG("upt[%d]=%d",j,sorted_criteo_entries_upt[j]);
 
     // 1: sorted by (product_id, user_id)
     FOR(j, 0, NUM_ENTRY) { sorted_criteo_entries_pu[j] = j; }
-    std::sort(sorted_criteo_entries_pu, sorted_criteo_entries_pu + NUM_ENTRY,
-              cmp_pu);
+    __gnu_parallel::sort(sorted_criteo_entries_pu,
+                         sorted_criteo_entries_pu + NUM_ENTRY, cmp_pu);
+    // FOR(j, 0, NUM_ENTRY) DBG("pu[%d]=%d",j,sorted_criteo_entries_pu[j]);
 
     // 2: sorted by (user_id, click_time)
     FOR(j, 0, NUM_ENTRY)
     {
         sorted_criteo_entries_ut[j] = sorted_criteo_entries_upt[j];
     }
-    std::sort(sorted_criteo_entries_ut, sorted_criteo_entries_ut + NUM_ENTRY,
-              cmp_ut);
+    __gnu_parallel::sort(sorted_criteo_entries_ut,
+                         sorted_criteo_entries_ut + NUM_ENTRY, cmp_ut);
+    // FOR(j, 0, NUM_ENTRY) DBG("ut[%d]=%d",j,sorted_criteo_entries_ut[j]);
 
     DBG("sort complete");
 }
