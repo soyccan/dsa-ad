@@ -1,6 +1,4 @@
-CC := gcc
-CFLAGS := -Wall -Wextra -Wconversion
-CXX := g++
+CXX := clang++
 CXXFLAGS := -Wall -Wextra -Wconversion -O2
 LDFLAGS :=
 
@@ -20,13 +18,9 @@ FILES := $(SRC) Makefile input output.ac
 
 DEBUG := 1
 ifeq ($(DEBUG), 1)
-	CC := clang
-	CXX := clang++
-	CFLAGS += -g
 	CXXFLAGS += -g
 else
-	CFLAGS += -O2 -DNDEBUG
-	CXXFLAGS += -O2 -DNDEBUG
+	CXXFLAGS += -DNDEBUG
 endif
 
 .PHONY: all upload clean run
@@ -47,8 +41,8 @@ demo: $(OBJS)
 # 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
 
 upload:
-	scp -P 9455 $(FILES) soyccan@bravo.nctu.me:/home/soyccan/Documents/dsa-ad
-	scp $(FILES) b07902143@linux2.csie.ntu.edu.tw:/home/student/07/b07902143/dsa-ad
+	# scp -P 9455 $(FILES) soyccan@bravo.nctu.me:/home/soyccan/Documents/dsa-ad
+	scp $(FILES) b07902143@linux6.csie.ntu.edu.tw:/home/student/07/b07902143/dsa-ad
 
 remote-run: upload
 	ssh -p 9455 soyccan@bravo.nctu.me "cd /home/soyccan/Documents/dsa-ad ; make local-run DEBUG=$(DEBUG)"
@@ -65,7 +59,7 @@ else
 endif
 
 show-data:
-	awk '{gsub("\t"," / ",$$0); print $$0 "\n"}' Criteo_Conversion_Search/CriteoSearchData
+	awk '{gsub("\t"," / ",$$0); print $$0 "\n"}' /tmp2/dsahw2/CriteoSearchData
 
 clean:
 	rm -rf $(OBJS) demo preload
