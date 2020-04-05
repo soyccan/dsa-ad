@@ -4,11 +4,12 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
 
 #include <algorithm>
+#include <parallel/algorithm>
 
 #include "common.h"
+#include "hex.h"
 
 
 Entry* criteo_entries;
@@ -16,39 +17,6 @@ int* sorted_criteo_entries_upt;
 int* sorted_criteo_entries_pu;
 int* sorted_criteo_entries_ut;
 
-
-static inline bool cmp_upt(int x, int y)
-{
-    int res;
-    res = cmp_u(x, y);
-    if (res != 0)
-        return res < 0;
-    res = cmp_p(x, y);
-    if (res != 0)
-        return res < 0;
-    res = criteo_entries[x].click_time - criteo_entries[y].click_time;
-    return res < 0;
-}
-
-static inline bool cmp_pu(int x, int y)
-{
-    int res;
-    res = cmp_p(x, y);
-    if (res != 0)
-        return res < 0;
-    res = cmp_u(x, y);
-    return res < 0;
-}
-
-static inline bool cmp_ut(int x, int y)
-{
-    int res;
-    res = cmp_u(x, y);
-    if (res != 0)
-        return res < 0;
-    res = criteo_entries[x].click_time - criteo_entries[y].click_time;
-    return res < 0;
-}
 
 static void __sort_criteo_data()
 {
@@ -66,21 +34,54 @@ static void __sort_criteo_data()
 
     // 0: sorted by (user_id, product_id, click_time)
     FOR(j, 0, NUM_ENTRY) { sorted_criteo_entries_upt[j] = j; }
-    std::sort(sorted_criteo_entries_upt, sorted_criteo_entries_upt + NUM_ENTRY,
-              cmp_upt);
+    __gnu_parallel::sort(
+        sorted_criteo_entries_upt, sorted_criteo_entries_upt + NUM_ENTRY,
+        [](int x, int y) {
+            int res =
+                memcmp(criteo_entries[x].user_id, criteo_entries[y].user_id,
+                       sizeof criteo_entries->user_id);
+            if (res != 0)
+                return res < 0;
+            res = memcmp(criteo_entries[x].product_id,
+                         criteo_entries[y].product_id,
+                         sizeof criteo_entries->product_id);
+            if (res != 0)
+                return res < 0;
+            return criteo_entries[x].click_time < criteo_entries[y].click_time;
+        });
+    // FOR(j, 0, NUM_ENTRY) DBG("upt[%d]=%d", j, sorted_criteo_entries_upt[j]);
 
     // 1: sorted by (product_id, user_id)
     FOR(j, 0, NUM_ENTRY) { sorted_criteo_entries_pu[j] = j; }
-    std::sort(sorted_criteo_entries_pu, sorted_criteo_entries_pu + NUM_ENTRY,
-              cmp_pu);
+    __gnu_parallel::sort(
+        sorted_criteo_entries_pu, sorted_criteo_entries_pu + NUM_ENTRY,
+        [](int x, int y) {
+            int res = memcmp(criteo_entries[x].product_id,
+                             criteo_entries[y].product_id,
+                             sizeof criteo_entries->product_id);
+            if (res != 0)
+                return res < 0;
+            return memcmp(criteo_entries[x].user_id, criteo_entries[y].user_id,
+                          sizeof criteo_entries->user_id) < 0;
+        });
+    // FOR(j, 0, NUM_ENTRY) DBG("pu[%d]=%d", j, sorted_criteo_entries_pu[j]);
 
     // 2: sorted by (user_id, click_time)
     FOR(j, 0, NUM_ENTRY)
     {
         sorted_criteo_entries_ut[j] = sorted_criteo_entries_upt[j];
     }
-    std::sort(sorted_criteo_entries_ut, sorted_criteo_entries_ut + NUM_ENTRY,
-              cmp_ut);
+    __gnu_parallel::sort(
+        sorted_criteo_entries_ut, sorted_criteo_entries_ut + NUM_ENTRY,
+        [](int x, int y) {
+            int res =
+                memcmp(criteo_entries[x].user_id, criteo_entries[y].user_id,
+                       sizeof criteo_entries->user_id);
+            if (res != 0)
+                return res < 0;
+            return criteo_entries[x].click_time < criteo_entries[y].click_time;
+        });
+    // FOR(j, 0, NUM_ENTRY) DBG("ut[%d]=%d", j, sorted_criteo_entries_ut[j]);
 
     DBG("sort complete");
 }
@@ -100,8 +101,6 @@ static void __load_criteo_data(const char* criteo_filename)
 
     int i = 0;
     for (i = 0; i < NUM_ENTRY; i++) {
-        criteo_entries[i].flag = 0;
-
         if (fgets(buf, 0x400, fs) == NULL)
             break;
 
@@ -121,35 +120,34 @@ static void __load_criteo_data(const char* criteo_filename)
             else if (j == 3)
                 criteo_entries[i].click_time = atoi(ps);
             else if (j == 5)
-                strncpy(criteo_entries[i].product_price, ps, 32);
+                strncpy(criteo_entries[i].product_price, ps,
+                        sizeof criteo_entries[i].product_price);
             else if (j == 6)
-                strncpy(criteo_entries[i].product_age_group, ps, 32);
+                strncpy(criteo_entries[i].product_age_group, ps,
+                        sizeof criteo_entries[i].product_age_group);
             else if (j == 9)
-                strncpy(criteo_entries[i].product_gender, ps, 32);
+                strncpy(criteo_entries[i].product_gender, ps,
+                        sizeof criteo_entries[i].product_gender);
             else if (j == 19) {
-                if (strncmp(ps, "-1", 32) == 0)
-                    criteo_entries[i].flag |= 1;
-                else if (*ps == '\0')
-                    criteo_entries[i].flag |= 2;
+                assert(*ps);  // product_id should not be empty string
+                if (*ps == '-')
+                    // but in case of "-1", we see it as "0000..."
+                    // TODO: is "000..." valid? may be duplicate key?
+                    memset(criteo_entries[i].product_id, 0,
+                           sizeof criteo_entries[i].product_id);
                 else
-                    __hexcpy(criteo_entries[i].product_id, ps, 32);
+                    hexcpy(criteo_entries[i].product_id, ps, 32);
             } else if (j == 22) {
-                if (strncmp(ps, "-1", 32) == 0)
-                    criteo_entries[i].flag |= 4;
-                else if (*ps == '\0')
-                    criteo_entries[i].flag |= 8;
-                else
-                    __hexcpy(criteo_entries[i].user_id, ps, 32);
+                assert(*ps);         // user_id should not be empty string
+                assert(*ps != '-');  // or "-1"
+                hexcpy(criteo_entries[i].user_id, ps, 32);
             }
         }
-        DBGN("i:%d user:%.16s product:%.16s time:%u", i,
-             criteo_entries[i].user_id, criteo_entries[i].product_id,
-             criteo_entries[i].click_time);
-        DBGN(" user:");
-        __bytesprint(stderr, criteo_entries[i].user_id, 16);
+        DBGN("i:%d user:", i);
+        hexprint(criteo_entries[i].user_id, 16, stderr);
         DBGN(" product:");
-        __bytesprint(stderr, criteo_entries[i].product_id, 16);
-        DBG("");
+        hexprint(criteo_entries[i].product_id, 16, stderr);
+        DBG(" time:%d", criteo_entries[i].click_time);
     }
     DBG("loaded entries: %d", i);  // 15995634
     fclose(fs);

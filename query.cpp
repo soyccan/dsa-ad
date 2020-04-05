@@ -31,6 +31,7 @@
 
 #include "common.h"
 #include "database.h"
+#include "hex.h"
 
 
 /* for cmp_?_? functions, we assume the string is valid bytes of length 16
@@ -63,8 +64,8 @@ static inline bool cmp_t_r(int x, int y)
 int get(const char* user_id, const char* product_id, int click_time)
 {
     uint8_t bu[16], bp[16];
-    G(__hexcpy(bu, user_id, 32));
-    G(__hexcpy(bp, product_id, 32));
+    hexcpy(bu, user_id, 32);
+    hexcpy(bp, product_id, 32);
 
     int *l, *r;
 
@@ -72,27 +73,27 @@ int get(const char* user_id, const char* product_id, int click_time)
                          sorted_criteo_entries_upt + NUM_ENTRY, bu, cmp_u_l);
     r = std::upper_bound(sorted_criteo_entries_upt,
                          sorted_criteo_entries_upt + NUM_ENTRY, bu, cmp_u_r);
+    if (l == sorted_criteo_entries_upt + NUM_ENTRY ||
+        memcmp(criteo_entries[*l].user_id, bu, 16) != 0)
+        return -1;
 
     l = std::lower_bound(l, r, bp, cmp_p_l);
     r = std::upper_bound(l, r, bp, cmp_p_r);
+    if (l == sorted_criteo_entries_upt + NUM_ENTRY ||
+        memcmp(criteo_entries[*l].user_id, bp, 16) != 0)
+        return -1;
 
     l = std::lower_bound(l, r, click_time, cmp_t_l);
     r = std::upper_bound(l, r, click_time, cmp_t_r);
-
     if (l == sorted_criteo_entries_upt + NUM_ENTRY ||
-        memcmp(criteo_entries[*l].user_id, bu, 16) != 0 ||
-        memcmp(criteo_entries[*l].product_id, bp, 16) != 0 ||
-        criteo_entries[*l].click_time != click_time) {
-        DBG("not found");
+        criteo_entries[*l].click_time != click_time)
         return -1;
-    }
 
-    DBGN("get index=%d time=%d", *l, criteo_entries[*l].click_time);
-    DBGN("    user=");
-    __bytesprint(stderr, criteo_entries[*l].user_id, 16);
-    DBGN("    product=");
-    __bytesprint(stderr, criteo_entries[*l].product_id, 16);
-    DBG("");
+    DBGN("get index=%d user=");
+    hexprint(criteo_entries[*l].user_id, 16, stderr);
+    DBGN(" product=");
+    hexprint(criteo_entries[*l].product_id, 16, stderr);
+    DBG(" time=%d", criteo_entries[*l].click_time);
 
     printf("%d\n", criteo_entries[*l].sale);
 
@@ -102,7 +103,7 @@ int get(const char* user_id, const char* product_id, int click_time)
 int purchased(const char* user_id)
 {
     uint8_t bu[16];
-    G(__hexcpy(bu, user_id, 32));
+    hexcpy(bu, user_id, 32);
 
     int* l =
         std::lower_bound(sorted_criteo_entries_upt,
@@ -112,32 +113,35 @@ int purchased(const char* user_id)
                          sorted_criteo_entries_upt + NUM_ENTRY, bu, cmp_u_r);
     assert(l <= r);
 
+    int cnt = 0;
     while (l != r) {
-        DBG("purchased sale=%hhd index=%d user=%.32s product=%.32s time=%d "
-            "price=%.8s age=%.32s gender=%.32s",
-            criteo_entries[*l].sale, *l, criteo_entries[*l].user_id,
-            criteo_entries[*l].product_id, criteo_entries[*l].click_time,
-            criteo_entries[*l].product_price,
+        DBGN("purchased sale=%hhd index=%d user=", criteo_entries[*l].sale, *l);
+        hexprint(criteo_entries[*l].user_id, 16, stderr);
+        DBGN(" product=");
+        hexprint(criteo_entries[*l].product_id, 16, stderr);
+        DBG(" time=%d price=%.8s age=%.32s gender=%.32s",
+            criteo_entries[*l].click_time, criteo_entries[*l].product_price,
             criteo_entries[*l].product_age_group,
             criteo_entries[*l].product_gender);
 
         if (criteo_entries[*l].sale) {
-            printf("%.32s %d %.8s %.32s %.32s\n", criteo_entries[*l].product_id,
-                   criteo_entries[*l].click_time,
+            hexprint(criteo_entries[*l].product_id, 16, stdout);
+            printf(" %d %.8s %.32s %.32s\n", criteo_entries[*l].click_time,
                    criteo_entries[*l].product_price,
                    criteo_entries[*l].product_age_group,
                    criteo_entries[*l].product_gender);
         }
         l++;
+        cnt++;
     }
-    return 0;
+    return cnt;
 }
 
 int clicked(const char* product_id1, const char* product_id2)
 {
     uint8_t bp1[16], bp2[16];
-    G(__hexcpy(bp1, product_id1, 32));
-    G(__hexcpy(bp2, product_id2, 32));
+    hexcpy(bp1, product_id1, 32);
+    hexcpy(bp2, product_id2, 32);
 
     int* l1 =
         std::lower_bound(sorted_criteo_entries_pu,
@@ -153,44 +157,47 @@ int clicked(const char* product_id1, const char* product_id2)
         std::upper_bound(sorted_criteo_entries_pu,
                          sorted_criteo_entries_pu + NUM_ENTRY, bp2, cmp_p_r);
 
+    int cnt = 0;
     while (l1 != r1 && l2 != r2) {
-        int res = cmp_u(*l1, *l2);
+        int res = memcmp(criteo_entries[*l1].user_id,
+                         criteo_entries[*l2].user_id, 16);
         if (res < 0) {
             l1++;
         } else if (res > 0) {
             l2++;
         } else {
-            DBG("clicked id=%d,%d product1=%.32s prod2=%.32s user=%.32s", *l1,
-                *l2, criteo_entries[*l1].product_id,
-                criteo_entries[*l2].product_id, criteo_entries[*l1].user_id);
-            printf("%.32s\n", criteo_entries[*l1].user_id);
+            cnt++;
+            hexprint(criteo_entries[*l1].user_id, 16, stdout);
+            puts("");
 
             int p = *l1;
-            while (l1 != r1 &&
-                   criteo_entries[p].user_id == criteo_entries[*l1].user_id)
+            while (l1 != r1 && memcmp(criteo_entries[p].user_id,
+                                      criteo_entries[*l1].user_id, 16) == 0)
                 l1++;
-            while (l2 != r2 &&
-                   criteo_entries[p].user_id == criteo_entries[*l2].user_id)
+            while (l2 != r2 && memcmp(criteo_entries[p].user_id,
+                                      criteo_entries[*l2].user_id, 16) == 0)
                 l2++;
         }
     }
-    return 0;
+    return cnt;
 }
 
 int profit(int from_time, float min_sales_per_click)
 {
-    for (int i = 0; i < NUM_ENTRY;) {
-        int* r = sorted_criteo_entries_ut + i;
+    int cnt = 0;
+    for (int* i = sorted_criteo_entries_ut;
+         i < sorted_criteo_entries_ut + NUM_ENTRY;) {
+        int* r = i;
         while (r < sorted_criteo_entries_ut + NUM_ENTRY &&
-               criteo_entries[sorted_criteo_entries_ut[i]].user_id ==
-                   criteo_entries[*r].user_id)
+               memcmp(criteo_entries[*i].user_id, criteo_entries[*r].user_id,
+                      16) == 0)  // TODO: optimize?
             r++;
 
         int* l =
-            std::lower_bound(sorted_criteo_entries_ut + i, r, from_time,
+            std::lower_bound(i, r, from_time,
                              cmp_t_l);  // TODO: "AFTER" time t meas ">= t" ?
 
-        int clicks = r - l;  // TODO: pointer difference
+        int clicks = static_cast<int>(r - l);  // TODO: pointer difference
         int sales = 0;
         while (l < r) {
             if (criteo_entries[*l].sale)
@@ -199,12 +206,18 @@ int profit(int from_time, float min_sales_per_click)
         }
         if ((clicks > 0 && (float) sales / clicks >= min_sales_per_click) ||
             (clicks == 0 && min_sales_per_click == 0)) {
-            DBG("profit so much sales=%d clicks=%d from_time=%d user=%.32s",
-                sales, clicks, from_time, criteo_entries[*(l - 1)].user_id);
+            cnt++;
+            DBGN("profit so much sales=%d clicks=%d from_time=%d user=", sales,
+                 clicks, from_time);
+            hexprint(criteo_entries[*(l - 1)].user_id, 16, stderr);
+            DBG("");
 
-            printf("%.32s\n", criteo_entries[*(l - 1)].user_id);
+            hexprint(criteo_entries[*(l - 1)].user_id, 16, stdout);
+            puts("");
+            if (cnt >= 10)
+                break;
         }
-        i = r - sorted_criteo_entries_ut;  // TODO
+        i = r;
     }
-    return 0;
+    return cnt;
 }
