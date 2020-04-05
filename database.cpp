@@ -143,11 +143,11 @@ static void __load_criteo_data(const char* criteo_filename)
                 hexcpy(criteo_entries[i].user_id, ps, 32);
             }
         }
-        DBGN("i:%d user:", i);
-        hexprint(criteo_entries[i].user_id, 16, stderr);
-        DBGN(" product:");
-        hexprint(criteo_entries[i].product_id, 16, stderr);
-        DBG(" time:%d", criteo_entries[i].click_time);
+        // DBGN("i:%d user:", i);
+        // hexprint(criteo_entries[i].user_id, 16, stderr);
+        // DBGN(" product:");
+        // hexprint(criteo_entries[i].product_id, 16, stderr);
+        // DBG(" time:%d", criteo_entries[i].click_time);
     }
     DBG("loaded entries: %d", i);  // 15995634
     fclose(fs);

@@ -1,3 +1,6 @@
+#ifndef _HEX_H_
+#define _HEX_H_ 1
+
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
@@ -17,13 +20,14 @@ static inline int hex2bits(char c)
     }
 }
 
+/* big-endian for lexigraphical order */
 static inline int hex2byte(const char s[2])
 {
     int x = hex2bits(s[0]);
     int y = hex2bits(s[1]);
     if (x < 0 || y < 0)
         return -1;
-    return ((y & 0xf) << 4) | (x & 0xf);
+    return ((x & 0xf) << 4) | (y & 0xf);
 }
 
 static inline void hexcpy(uint8_t* dest, const char* src, size_t srclen)
@@ -33,18 +37,27 @@ static inline void hexcpy(uint8_t* dest, const char* src, size_t srclen)
     }
 }
 
-static inline void hexprint(uint8_t* src, size_t n, FILE* stream)
+static inline void hexprint(const uint8_t* src, size_t n, FILE* stream)
 {
+    // special value for product_id
+    static char zeros[16];
+    if (memcmp(src, zeros, 16) == 0) {
+        fprintf(stream, "-1");
+        return;
+    }
     FOR(i, 0, n)
     {
+        char c = src[i];
         FOR(j, 0, 2)
         {
-            int x = src[i] & 0xf;
+            int x = (c & 0xf0) >> 4;
             if (x <= 9)
                 fputc('0' + x, stream);
             else
                 fputc('A' + x - 10, stream);
-            src[i] >>= 4;
+            c <<= 4;
         }
     }
 }
+
+#endif

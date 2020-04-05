@@ -38,19 +38,19 @@
  */
 static inline bool cmp_u_l(int x, const uint8_t* y)
 {
-    return memcmp(criteo_entries[x].user_id, y, 16);
+    return memcmp(criteo_entries[x].user_id, y, 16) < 0;
 }
 static inline bool cmp_u_r(const uint8_t* x, int y)
 {
-    return memcmp(x, criteo_entries[y].user_id, 16);
+    return memcmp(x, criteo_entries[y].user_id, 16) < 0;
 }
 static inline bool cmp_p_l(int x, const uint8_t* y)
 {
-    return memcmp(criteo_entries[x].product_id, y, 16);
+    return memcmp(criteo_entries[x].product_id, y, 16) < 0;
 }
 static inline bool cmp_p_r(const uint8_t* x, int y)
 {
-    return memcmp(x, criteo_entries[y].product_id, 16);
+    return memcmp(x, criteo_entries[y].product_id, 16) < 0;
 }
 static inline bool cmp_t_l(int x, int y)
 {
@@ -80,7 +80,7 @@ int get(const char* user_id, const char* product_id, int click_time)
     l = std::lower_bound(l, r, bp, cmp_p_l);
     r = std::upper_bound(l, r, bp, cmp_p_r);
     if (l == sorted_criteo_entries_upt + NUM_ENTRY ||
-        memcmp(criteo_entries[*l].user_id, bp, 16) != 0)
+        memcmp(criteo_entries[*l].product_id, bp, 16) != 0)
         return -1;
 
     l = std::lower_bound(l, r, click_time, cmp_t_l);
@@ -89,7 +89,7 @@ int get(const char* user_id, const char* product_id, int click_time)
         criteo_entries[*l].click_time != click_time)
         return -1;
 
-    DBGN("get index=%d user=");
+    DBGN("get index=%d user=", *l);
     hexprint(criteo_entries[*l].user_id, 16, stderr);
     DBGN(" product=");
     hexprint(criteo_entries[*l].product_id, 16, stderr);
