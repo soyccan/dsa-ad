@@ -6,6 +6,7 @@
 
 #define FOR(i, a, n) for (typeof(a) i = a; i < n; i++)
 
+#ifndef NDEBUG
 // guard syscall error
 #define G(expr)                         \
     if ((expr) < 0) {                   \
@@ -20,17 +21,12 @@
         exit(-1);                       \
     }
 
-#define ERREXIT(msg)                  \
-    {                                 \
-        perror("\e[31m" msg "\e[0m"); \
-        exit(-1);                     \
-    }
-
-
-#ifndef NDEBUG
 #define DBG(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)
 #define DBGN(format, ...) fprintf(stderr, format, ##__VA_ARGS__)
+
 #else
+#define G(expr) (expr)
+#define GG(expr, err_value) (expr)
 #define DBG(...)
 #define DBGN(...)
 #endif

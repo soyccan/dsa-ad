@@ -1,7 +1,7 @@
-
 // TODO: do strncmp behave correctly on unsigned char?
 #include "database.h"
 
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 
