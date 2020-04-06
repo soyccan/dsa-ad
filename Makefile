@@ -1,13 +1,20 @@
 CXX := clang++
-CXXFLAGS := -Wall -Wextra -Wconversion -O3
+CXXFLAGS := -Wall -Wextra -Wconversion -O3 -std=gnu++17
 LDFLAGS :=
 
 # shm_open
 # LDFLAGS += -lrt
 
 # parellel support
-CXXFLAGS += -fopenmp -D_GLIBCXX_PARALLEL -march=native
-LDFLAGS += -fopenmp
+ifndef PAR
+	PAR := 1
+endif
+ifeq ($(PAR), 1)
+	CXXFLAGS += -fopenmp -D_GLIBCXX_PARALLEL -march=native
+	LDFLAGS += -fopenmp
+else
+	CXXFLAGS += -DNOPAR
+endif
 
 SRC := main.cpp \
 	common.h hex.h \
@@ -25,13 +32,22 @@ else
 	CXXFLAGS += -DNDEBUG
 endif
 
-.PHONY: upload clean run show-data
+ifndef VERBOSE
+	VERBOSE := 0
+endif
+ifeq ($(VERBOSE), 1)
+	Q :=
+else
+	Q := @
+endif
+
+.PHONY: upload clean run show-data pack
 
 demo: $(OBJS)
-	$(CXX) $(LDFLAGS) -o $@ $^
+	$(Q)$(CXX) $(LDFLAGS) -o $@ $^
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $^
+	$(Q)$(CXX) $(CXXFLAGS) -c -o $@ $^
 
 upload:
 	# scp -P 9455 $(FILES) soyccan@bravo.nctu.me:/home/soyccan/Documents/dsa-ad
@@ -49,3 +65,8 @@ show-data:
 
 clean:
 	rm -rf $(OBJS) demo
+
+pack:
+	mkdir b07902143_dsa_hw2
+	cp $(SRC) Makefile b07902143_dsa_hw2
+	zip -r b07902143_dsa_hw2.zip b07902143_dsa_hw2

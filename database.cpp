@@ -6,10 +6,19 @@
 #include <string.h>
 
 #include <algorithm>
+#ifndef NOPAR
 #include <parallel/algorithm>
+#else
+namespace __gnu_parallel = std;
+#endif
 
 #include "common.h"
 #include "hex.h"
+
+
+#ifndef O_DIRECT
+#define O_DIRECT 0
+#endif
 
 
 EntryValue* criteo_entries;
@@ -32,7 +41,7 @@ static void __sort_criteo_data()
     }
     __gnu_parallel::sort(sorted_criteo_entries_upt,
                          sorted_criteo_entries_upt + NUM_ENTRY,
-                         [](const EntryKeyUPT& x, const EntryKeyUPT& y) {
+                         [&](const EntryKeyUPT& x, const EntryKeyUPT& y) {
                              int res = MEMCMP(x.user_id, y.user_id);
                              if (res != 0)
                                  return res < 0;
@@ -53,7 +62,7 @@ static void __sort_criteo_data()
     }
     __gnu_parallel::sort(sorted_criteo_entries_pu,
                          sorted_criteo_entries_pu + NUM_ENTRY,
-                         [](const EntryKeyPU& x, const EntryKeyPU& y) {
+                         [&](const EntryKeyPU& x, const EntryKeyPU& y) {
                              int res = MEMCMP(x.product_id, y.product_id);
                              if (res != 0)
                                  return res < 0;
@@ -71,7 +80,7 @@ static void __sort_criteo_data()
     }
     __gnu_parallel::sort(sorted_criteo_entries_ut,
                          sorted_criteo_entries_ut + NUM_ENTRY,
-                         [](const EntryKeyUT& x, const EntryKeyUT& y) {
+                         [&](const EntryKeyUT& x, const EntryKeyUT& y) {
                              int res = MEMCMP(x.user_id, y.user_id);
                              if (res != 0)
                                  return res < 0;
