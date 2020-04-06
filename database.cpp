@@ -12,74 +12,76 @@
 #include "hex.h"
 
 
-Entry* criteo_entries;
-int* sorted_criteo_entries_upt;
-int* sorted_criteo_entries_pu;
-int* sorted_criteo_entries_ut;
+EntryValue* criteo_entries;
+EntryKeyUPT* sorted_criteo_entries_upt;
+EntryKeyPU* sorted_criteo_entries_pu;
+EntryKeyUT* sorted_criteo_entries_ut;
 
 
 static void __sort_criteo_data()
 {
     // TODO:  qsort vs. std::sort, which faster?
 
-    GG(sorted_criteo_entries_upt =
-           reinterpret_cast<int*>(malloc(NUM_ENTRY * sizeof(int))),
-       NULL);
-    GG(sorted_criteo_entries_pu =
-           reinterpret_cast<int*>(malloc(NUM_ENTRY * sizeof(int))),
-       NULL);
-    GG(sorted_criteo_entries_ut =
-           reinterpret_cast<int*>(malloc(NUM_ENTRY * sizeof(int))),
-       NULL);
+    GG(sorted_criteo_entries_pu = new EntryKeyPU[NUM_ENTRY], NULL);
+    GG(sorted_criteo_entries_ut = new EntryKeyUT[NUM_ENTRY], NULL);
 
+    // only upt is assigned keys already
     // 0: sorted by (user_id, product_id, click_time)
-    FOR(j, 0, NUM_ENTRY) { sorted_criteo_entries_upt[j] = j; }
+    FOR(j, 0, NUM_ENTRY)
+    {
+        sorted_criteo_entries_upt[j].value = criteo_entries + j;
+    }
     __gnu_parallel::sort(
         sorted_criteo_entries_upt, sorted_criteo_entries_upt + NUM_ENTRY,
-        [](int x, int y) {
-            int res =
-                memcmp(criteo_entries[x].user_id, criteo_entries[y].user_id,
-                       sizeof criteo_entries->user_id);
+        [](const EntryKeyUPT& x, const EntryKeyUPT& y) {
+            int res = memcmp(x.user_id, y.user_id, sizeof x.user_id);
             if (res != 0)
                 return res < 0;
-            res = memcmp(criteo_entries[x].product_id,
-                         criteo_entries[y].product_id,
-                         sizeof criteo_entries->product_id);
+            res = memcmp(x.product_id, y.product_id, sizeof x.product_id);
             if (res != 0)
                 return res < 0;
-            return criteo_entries[x].click_time < criteo_entries[y].click_time;
+            return x.click_time < y.click_time;
         });
     // FOR(j, 0, NUM_ENTRY) DBG("upt[%d]=%d", j, sorted_criteo_entries_upt[j]);
 
     // 1: sorted by (product_id, user_id)
-    FOR(j, 0, NUM_ENTRY) { sorted_criteo_entries_pu[j] = j; }
+    FOR(j, 0, NUM_ENTRY)
+    {
+        memcpy(sorted_criteo_entries_pu[j].product_id,
+               sorted_criteo_entries_upt[j].product_id,
+               sizeof sorted_criteo_entries_upt[j].product_id);
+        memcpy(sorted_criteo_entries_pu[j].user_id,
+               sorted_criteo_entries_upt[j].user_id,
+               sizeof sorted_criteo_entries_upt[j].user_id);
+        sorted_criteo_entries_pu[j].value = sorted_criteo_entries_upt[j].value;
+    }
     __gnu_parallel::sort(
         sorted_criteo_entries_pu, sorted_criteo_entries_pu + NUM_ENTRY,
-        [](int x, int y) {
-            int res = memcmp(criteo_entries[x].product_id,
-                             criteo_entries[y].product_id,
-                             sizeof criteo_entries->product_id);
+        [](const EntryKeyPU& x, const EntryKeyPU& y) {
+            int res = memcmp(x.product_id, y.product_id, sizeof x.product_id);
             if (res != 0)
                 return res < 0;
-            return memcmp(criteo_entries[x].user_id, criteo_entries[y].user_id,
-                          sizeof criteo_entries->user_id) < 0;
+            return memcmp(x.user_id, y.user_id, sizeof x.user_id) < 0;
         });
     // FOR(j, 0, NUM_ENTRY) DBG("pu[%d]=%d", j, sorted_criteo_entries_pu[j]);
 
     // 2: sorted by (user_id, click_time)
     FOR(j, 0, NUM_ENTRY)
     {
-        sorted_criteo_entries_ut[j] = sorted_criteo_entries_upt[j];
+        memcpy(sorted_criteo_entries_ut[j].user_id,
+               sorted_criteo_entries_upt[j].user_id,
+               sizeof sorted_criteo_entries_upt[j].user_id);
+        sorted_criteo_entries_ut[j].click_time =
+            sorted_criteo_entries_upt[j].click_time;
+        sorted_criteo_entries_ut[j].value = sorted_criteo_entries_upt[j].value;
     }
     __gnu_parallel::sort(
         sorted_criteo_entries_ut, sorted_criteo_entries_ut + NUM_ENTRY,
-        [](int x, int y) {
-            int res =
-                memcmp(criteo_entries[x].user_id, criteo_entries[y].user_id,
-                       sizeof criteo_entries->user_id);
+        [](const EntryKeyUT& x, const EntryKeyUT& y) {
+            int res = memcmp(x.user_id, y.user_id, sizeof x.user_id);
             if (res != 0)
                 return res < 0;
-            return criteo_entries[x].click_time < criteo_entries[y].click_time;
+            return x.click_time < y.click_time;
         });
     // FOR(j, 0, NUM_ENTRY) DBG("ut[%d]=%d", j, sorted_criteo_entries_ut[j]);
 
@@ -88,16 +90,22 @@ static void __sort_criteo_data()
 
 static void __load_criteo_data(const char* criteo_filename)
 {
+    int fd;
     FILE* fs;
     char* buf;
 
-    GG(fs = fopen(criteo_filename, "r"), NULL);
-    GG(buf = reinterpret_cast<char*>(malloc(0x400 * sizeof(char))),
-       NULL);  // 0x400 is enough to handle longest line
+    // O_DIRECT to bypass kernel buffer cache
+    // though not much effiency improvement
+    G(fd = open(criteo_filename, O_RDONLY | O_DIRECT));
+    GG(fs = fdopen(fd, "r"), NULL);
 
-    GG(criteo_entries =
-           reinterpret_cast<Entry*>(malloc(NUM_ENTRY * sizeof(Entry))),
-       NULL);
+    // 0x400 is enough to handle longest line
+    GG(buf = new char[0x400], NULL);
+
+    GG(criteo_entries = new EntryValue[NUM_ENTRY], NULL);
+
+    // only upt is assigned first
+    GG(sorted_criteo_entries_upt = new EntryKeyUPT[NUM_ENTRY], NULL);
 
     int i = 0;
     for (i = 0; i < NUM_ENTRY; i++) {
@@ -118,7 +126,7 @@ static void __load_criteo_data(const char* criteo_filename)
             if (j == 0)
                 criteo_entries[i].sale = atoi(ps);
             else if (j == 3)
-                criteo_entries[i].click_time = atoi(ps);
+                sorted_criteo_entries_upt[i].click_time = atoi(ps);
             else if (j == 5)
                 memcpy(criteo_entries[i].product_price, ps,
                        sizeof criteo_entries[i].product_price);
@@ -131,18 +139,19 @@ static void __load_criteo_data(const char* criteo_filename)
             else if (j == 19) {
                 assert(strlen(ps) == 2 || strlen(ps) == 32);
                 assert(*ps);  // product_id should not be empty string
-                if (*ps == '-')
+                if (*ps == '-') {
                     // but in case of "-1", we see it as "0000..."
                     // TODO: is "000..." valid? may be duplicate key?
-                    memset(criteo_entries[i].product_id, 0,
-                           sizeof criteo_entries[i].product_id);
-                else
-                    hexcpy(criteo_entries[i].product_id, ps, 32);
+                    memset(sorted_criteo_entries_upt[i].product_id, 0,
+                           sizeof sorted_criteo_entries_upt[i].product_id);
+                } else {
+                    hexcpy(sorted_criteo_entries_upt[i].product_id, ps, 32);
+                }
             } else if (j == 22) {
                 assert(strlen(ps) == 32);
                 assert(*ps);         // user_id should not be empty string
                 assert(*ps != '-');  // or "-1"
-                hexcpy(criteo_entries[i].user_id, ps, 32);
+                hexcpy(sorted_criteo_entries_upt[i].user_id, ps, 32);
             }
         }
         // DBGN("i:%d user:", i);
