@@ -3,8 +3,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-#define FOR(i, a, n) for (typeof(a) i = a; i < n; i++)
+#define MEMCPY(dest, src) memcpy(dest, src, sizeof(dest))
+#define MEMCMP(dest, src) memcmp(dest, src, sizeof(dest))
 
 #ifndef NDEBUG
 // guard syscall error

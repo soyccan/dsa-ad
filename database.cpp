@@ -27,62 +27,56 @@ static void __sort_criteo_data()
 
     // only upt is assigned keys already
     // 0: sorted by (user_id, product_id, click_time)
-    FOR(j, 0, NUM_ENTRY)
-    {
+    for (size_t j = 0; j < NUM_ENTRY; j++) {
         sorted_criteo_entries_upt[j].value = criteo_entries + j;
     }
-    __gnu_parallel::sort(
-        sorted_criteo_entries_upt, sorted_criteo_entries_upt + NUM_ENTRY,
-        [](const EntryKeyUPT& x, const EntryKeyUPT& y) {
-            int res = memcmp(x.user_id, y.user_id, sizeof x.user_id);
-            if (res != 0)
-                return res < 0;
-            res = memcmp(x.product_id, y.product_id, sizeof x.product_id);
-            if (res != 0)
-                return res < 0;
-            return x.click_time < y.click_time;
-        });
+    __gnu_parallel::sort(sorted_criteo_entries_upt,
+                         sorted_criteo_entries_upt + NUM_ENTRY,
+                         [](const EntryKeyUPT& x, const EntryKeyUPT& y) {
+                             int res = MEMCMP(x.user_id, y.user_id);
+                             if (res != 0)
+                                 return res < 0;
+                             res = MEMCMP(x.product_id, y.product_id);
+                             if (res != 0)
+                                 return res < 0;
+                             return x.click_time < y.click_time;
+                         });
     // FOR(j, 0, NUM_ENTRY) DBG("upt[%d]=%d", j, sorted_criteo_entries_upt[j]);
 
     // 1: sorted by (product_id, user_id)
-    FOR(j, 0, NUM_ENTRY)
-    {
-        memcpy(sorted_criteo_entries_pu[j].product_id,
-               sorted_criteo_entries_upt[j].product_id,
-               sizeof sorted_criteo_entries_upt[j].product_id);
-        memcpy(sorted_criteo_entries_pu[j].user_id,
-               sorted_criteo_entries_upt[j].user_id,
-               sizeof sorted_criteo_entries_upt[j].user_id);
+    for (size_t j = 0; j < NUM_ENTRY; j++) {
+        MEMCPY(sorted_criteo_entries_pu[j].product_id,
+               sorted_criteo_entries_upt[j].product_id);
+        MEMCPY(sorted_criteo_entries_pu[j].user_id,
+               sorted_criteo_entries_upt[j].user_id);
         sorted_criteo_entries_pu[j].value = sorted_criteo_entries_upt[j].value;
     }
-    __gnu_parallel::sort(
-        sorted_criteo_entries_pu, sorted_criteo_entries_pu + NUM_ENTRY,
-        [](const EntryKeyPU& x, const EntryKeyPU& y) {
-            int res = memcmp(x.product_id, y.product_id, sizeof x.product_id);
-            if (res != 0)
-                return res < 0;
-            return memcmp(x.user_id, y.user_id, sizeof x.user_id) < 0;
-        });
+    __gnu_parallel::sort(sorted_criteo_entries_pu,
+                         sorted_criteo_entries_pu + NUM_ENTRY,
+                         [](const EntryKeyPU& x, const EntryKeyPU& y) {
+                             int res = MEMCMP(x.product_id, y.product_id);
+                             if (res != 0)
+                                 return res < 0;
+                             return MEMCMP(x.user_id, y.user_id) < 0;
+                         });
     // FOR(j, 0, NUM_ENTRY) DBG("pu[%d]=%d", j, sorted_criteo_entries_pu[j]);
 
     // 2: sorted by (user_id, click_time)
-    FOR(j, 0, NUM_ENTRY)
-    {
-        memcpy(sorted_criteo_entries_ut[j].user_id,
-               sorted_criteo_entries_upt[j].user_id,
-               sizeof sorted_criteo_entries_upt[j].user_id);
+    for (size_t j = 0; j < NUM_ENTRY; j++) {
+        MEMCPY(sorted_criteo_entries_ut[j].user_id,
+               sorted_criteo_entries_upt[j].user_id);
         sorted_criteo_entries_ut[j].click_time =
             sorted_criteo_entries_upt[j].click_time;
         sorted_criteo_entries_ut[j].value = sorted_criteo_entries_upt[j].value;
     }
-    __gnu_parallel::sort(
-        sorted_criteo_entries_ut, sorted_criteo_entries_ut + NUM_ENTRY,
-        [](const EntryKeyUT& x, const EntryKeyUT& y) {
-            int res = memcmp(x.user_id, y.user_id, sizeof x.user_id);
-            if (res != 0)
-                return res < 0;
-            return x.click_time < y.click_time;
-        });
+    __gnu_parallel::sort(sorted_criteo_entries_ut,
+                         sorted_criteo_entries_ut + NUM_ENTRY,
+                         [](const EntryKeyUT& x, const EntryKeyUT& y) {
+                             int res = MEMCMP(x.user_id, y.user_id);
+                             if (res != 0)
+                                 return res < 0;
+                             return x.click_time < y.click_time;
+                         });
     // FOR(j, 0, NUM_ENTRY) DBG("ut[%d]=%d", j, sorted_criteo_entries_ut[j]);
 
     DBG("sort complete");
@@ -116,8 +110,7 @@ static void __load_criteo_data(const char* criteo_filename)
         // strncpy won't append null-byte if length is exactly 32, this is great
         // Deleted: ~~note the appended null-byte (by scanf) is overwritten~~
         char *s = buf, *ps;
-        FOR(j, 0, 23)
-        {
+        for (int j = 0; j < 23; j++) {
             if (j < 22)
                 ps = strsep(&s, "\t");
             else
@@ -128,14 +121,11 @@ static void __load_criteo_data(const char* criteo_filename)
             else if (j == 3)
                 sorted_criteo_entries_upt[i].click_time = atoi(ps);
             else if (j == 5)
-                memcpy(criteo_entries[i].product_price, ps,
-                       sizeof criteo_entries[i].product_price);
+                MEMCPY(criteo_entries[i].product_price, ps);
             else if (j == 6)
-                memcpy(criteo_entries[i].product_age_group, ps,
-                       sizeof criteo_entries[i].product_age_group);
+                MEMCPY(criteo_entries[i].product_age_group, ps);
             else if (j == 9)
-                memcpy(criteo_entries[i].product_gender, ps,
-                       sizeof criteo_entries[i].product_gender);
+                MEMCPY(criteo_entries[i].product_gender, ps);
             else if (j == 19) {
                 assert(strlen(ps) == 2 || strlen(ps) == 32);
                 assert(*ps);  // product_id should not be empty string

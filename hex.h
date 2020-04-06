@@ -8,7 +8,7 @@
 #include "common.h"
 
 #ifndef NDEBUG
-#define DBGHEX(s, n) hexprint(s, n, stderr);
+#define DBGHEX(s) hexprint(s, sizeof(s), stderr);
 #else
 #define DBGHEX(...)
 #endif
@@ -39,7 +39,9 @@ static inline int hex2byte(const char s[2])
 static inline void hexcpy(uint8_t* dest, const char* src, size_t srclen)
 {
     for (size_t i = 0; i < srclen; i += 2) {
-        dest[i >> 1] = hex2byte(src + i);
+        int x = hex2byte(src + i);
+        if (x >= 0)
+            dest[i >> 1] = static_cast<uint8_t>(x);
     }
 }
 
@@ -51,12 +53,10 @@ static inline void hexprint(const uint8_t* src, size_t n, FILE* stream)
         fprintf(stream, "-1");
         return;
     }
-    FOR(i, 0, n)
-    {
-        char c = src[i];
-        FOR(j, 0, 2)
-        {
-            int x = (c & 0xf0) >> 4;
+    for (size_t i = 0; i < n; i++) {
+        uint8_t c = src[i];
+        for (int j = 0; j < 2; j++) {
+            uint8_t x = (c & 0xf0) >> 4;
             if (x <= 9)
                 fputc('0' + x, stream);
             else

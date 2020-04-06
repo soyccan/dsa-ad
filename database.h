@@ -14,8 +14,16 @@ struct EntryValue {
     char product_gender[32];
 };
 
-// for strings of length 16, they are converted from
-// hexidecimal string to unsigned char to attain most effective space
+/*
+ * user_id always exists as a 32-byte hex string
+ *
+ * product_id always exists as a 32-byte hex string or "-1"
+ * "-1" is converted to "000..." (32 zeroes)
+ * TODO: there may be duplicate keys if there is also a product_id of "000..."
+ *
+ * 32-byte hex string is converted to 16 bytes to attain most effective space
+ * and be cache friendly since a xmm register can store it
+ */
 struct EntryKeyUPT {
     uint8_t user_id[16];
     uint8_t product_id[16];

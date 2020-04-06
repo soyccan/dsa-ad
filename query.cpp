@@ -40,22 +40,22 @@ template <typename T>
 struct CompU {
     inline bool operator()(const T& x, const uint8_t* y) const
     {
-        return memcmp(x.user_id, y, sizeof x.user_id) < 0;
+        return MEMCMP(x.user_id, y) < 0;
     }
     inline bool operator()(const uint8_t* x, const T& y) const
     {
-        return memcmp(x, y.user_id, sizeof y.user_id) < 0;
+        return MEMCMP(y.user_id, x) > 0;
     }
 };
 template <typename T>
 struct CompP {
     inline bool operator()(const T& x, const uint8_t* y) const
     {
-        return memcmp(x.product_id, y, sizeof x.product_id) < 0;
+        return MEMCMP(x.product_id, y) < 0;
     }
     inline bool operator()(const uint8_t* x, const T& y) const
     {
-        return memcmp(x, y.product_id, sizeof y.product_id) < 0;
+        return MEMCMP(y.product_id, x) > 0;
     }
 };
 template <typename T>
@@ -80,13 +80,13 @@ int get(const char* user_id, const char* product_id, int click_time)
                          sorted_criteo_entries_upt + NUM_ENTRY, bu,
                          CompU<EntryKeyUPT>());
     if (l == sorted_criteo_entries_upt + NUM_ENTRY ||
-        memcmp(l->user_id, bu, 16) != 0)
+        MEMCMP(l->user_id, bu) != 0)
         return -1;
 
     l = std::lower_bound(l, r, bp, CompP<EntryKeyUPT>());
     r = std::upper_bound(l, r, bp, CompP<EntryKeyUPT>());
     if (l == sorted_criteo_entries_upt + NUM_ENTRY ||
-        memcmp(l->product_id, bp, 16) != 0)
+        MEMCMP(l->product_id, bp) != 0)
         return -1;
 
     l = std::lower_bound(l, r, click_time, CompT<EntryKeyUPT>());
@@ -94,15 +94,15 @@ int get(const char* user_id, const char* product_id, int click_time)
         l->click_time != click_time)
         return -1;
 
-    DBGN("get index=%d user=", *l);
-    DBGHEX(l->user_id, 16);
+    DBGN("get index=%ld user=", l->value - criteo_entries);
+    DBGHEX(l->user_id);
     DBGN(" product=");
-    DBGHEX(l->product_id, 16);
+    DBGHEX(l->product_id);
     DBG(" time=%d", l->click_time);
 
     printf("%d\n", l->value->sale);
 
-    return l->value - criteo_entries;
+    return static_cast<int>(l->value - criteo_entries);
 }
 
 int purchased(const char* user_id)
@@ -120,22 +120,23 @@ int purchased(const char* user_id)
 
     int cnt = 0;
     while (l != r) {
-        DBGN("purchased sale=%hhd index=%d user=", l->value->sale, *l);
-        DBGHEX(l->user_id, 16);
+        DBGN("purchased sale=%hhd index=%ld user=", l->value->sale,
+             l->value - criteo_entries);
+        DBGHEX(l->user_id);
         DBGN(" product=");
-        DBGHEX(l->product_id, 16);
+        DBGHEX(l->product_id);
         DBG(" time=%d price=%.8s age=%.32s gender=%.32s", l->click_time,
             l->value->product_price, l->value->product_age_group,
             l->value->product_gender);
 
         if (l->value->sale) {
-            hexprint(l->product_id, 16, stdout);
+            hexprint(l->product_id, sizeof l->product_id, stdout);
             printf(" %d %.8s %.32s %.32s\n", l->click_time,
                    l->value->product_price, l->value->product_age_group,
                    l->value->product_gender);
+            cnt++;
         }
         l++;
-        cnt++;
     }
     return cnt;
 }
@@ -162,20 +163,20 @@ int clicked(const char* product_id1, const char* product_id2)
 
     int cnt = 0;
     while (l1 != r1 && l2 != r2) {
-        int res = memcmp(l1->user_id, l2->user_id, 16);
+        int res = MEMCMP(l1->user_id, l2->user_id);
         if (res < 0) {
             l1++;
         } else if (res > 0) {
             l2++;
         } else {
             cnt++;
-            hexprint(l1->user_id, 16, stdout);
+            hexprint(l1->user_id, sizeof l1->user_id, stdout);
             puts("");
 
             EntryKeyPU* p = l1;
-            while (l1 != r1 && memcmp(p->user_id, l1->user_id, 16) == 0)
+            while (l1 != r1 && MEMCMP(p->user_id, l1->user_id) == 0)
                 l1++;
-            while (l2 != r2 && memcmp(p->user_id, l2->user_id, 16) == 0)
+            while (l2 != r2 && MEMCMP(p->user_id, l2->user_id) == 0)
                 l2++;
         }
     }
@@ -189,7 +190,7 @@ int profit(int from_time, float min_sales_per_click)
          i < sorted_criteo_entries_ut + NUM_ENTRY;) {
         EntryKeyUT* r = i;
         while (r < sorted_criteo_entries_ut + NUM_ENTRY &&
-               memcmp(i->user_id, r->user_id, 16) == 0)
+               MEMCMP(i->user_id, r->user_id) == 0)
             // TODO: optimize?
             r++;
 
@@ -208,10 +209,10 @@ int profit(int from_time, float min_sales_per_click)
             cnt++;
             DBGN("profit so much sales=%d clicks=%d from_time=%d user=", sales,
                  clicks, from_time);
-            DBGHEX((l - 1)->user_id, 16);
+            DBGHEX((l - 1)->user_id);
             DBG("");
 
-            hexprint((l - 1)->user_id, 16, stdout);
+            hexprint((l - 1)->user_id, sizeof((l - 1)->user_id), stdout);
             puts("");
             if (cnt >= 10)
                 break;
