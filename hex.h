@@ -7,6 +7,12 @@
 
 #include "common.h"
 
+#ifndef NDEBUG
+#define DBGHEX(s, n) hexprint(s, n, stderr);
+#else
+#define DBGHEX(...)
+#endif
+
 static inline int hex2bits(char c)
 {
     if ('0' <= c && c <= '9')

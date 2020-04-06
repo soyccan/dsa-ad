@@ -90,9 +90,9 @@ int get(const char* user_id, const char* product_id, int click_time)
         return -1;
 
     DBGN("get index=%d user=", *l);
-    hexprint(criteo_entries[*l].user_id, 16, stderr);
+    DBGHEX(criteo_entries[*l].user_id, 16);
     DBGN(" product=");
-    hexprint(criteo_entries[*l].product_id, 16, stderr);
+    DBGHEX(criteo_entries[*l].product_id, 16);
     DBG(" time=%d", criteo_entries[*l].click_time);
 
     printf("%d\n", criteo_entries[*l].sale);
@@ -116,9 +116,9 @@ int purchased(const char* user_id)
     int cnt = 0;
     while (l != r) {
         DBGN("purchased sale=%hhd index=%d user=", criteo_entries[*l].sale, *l);
-        hexprint(criteo_entries[*l].user_id, 16, stderr);
+        DBGHEX(criteo_entries[*l].user_id, 16);
         DBGN(" product=");
-        hexprint(criteo_entries[*l].product_id, 16, stderr);
+        DBGHEX(criteo_entries[*l].product_id, 16);
         DBG(" time=%d price=%.8s age=%.32s gender=%.32s",
             criteo_entries[*l].click_time, criteo_entries[*l].product_price,
             criteo_entries[*l].product_age_group,
@@ -209,7 +209,7 @@ int profit(int from_time, float min_sales_per_click)
             cnt++;
             DBGN("profit so much sales=%d clicks=%d from_time=%d user=", sales,
                  clicks, from_time);
-            hexprint(criteo_entries[*(l - 1)].user_id, 16, stderr);
+            DBGHEX(criteo_entries[*(l - 1)].user_id, 16);
             DBG("");
 
             hexprint(criteo_entries[*(l - 1)].user_id, 16, stdout);

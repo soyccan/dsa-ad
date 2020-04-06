@@ -1,0 +1,49 @@
+on soyccan-vm-server:
+load 30s
+sort 30s
+./demo Criteo_Conversion_Search/CriteoSearchData < input > output  51.03s user 12.67s system 67% cpu 1:34.61 total
+
+on CSIE workstation:
+load 11s
+sort 30-40s
+real    0m58.807s
+user    0m52.257s
+sys     0m6.428s
+
+### after enable __gnu_parallel:
+on soyccan-vm-server:
+load 42s
+sort 10s
+./demo Criteo_Conversion_Search/CriteoSearchData < input > output  66.57s user 19.44s system 150% cpu 57.193 total
+
+on CSIE workstation:
+load 11s
+sort 15s
+real    0m28.660s
+user    1m3.287s
+sys     0m5.591s
+
+### after pre-sort keys:
+on soyccan-vm-server:
+
+on CSIE workstation:
+load 16s
+sort 24s
+real    0m44.998s
+user    1m24.492s
+sys     0m12.035s
+
+
+real    0m53.957s
+user    1m44.005s
+sys     0m15.203s
+
+
+###
+real    0m36.099s
+user    1m6.654s
+sys     0m5.366s
+
+real    0m30.840s
+user    0m55.804s
+sys     0m8.605s

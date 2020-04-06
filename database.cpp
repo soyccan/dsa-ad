@@ -120,15 +120,16 @@ static void __load_criteo_data(const char* criteo_filename)
             else if (j == 3)
                 criteo_entries[i].click_time = atoi(ps);
             else if (j == 5)
-                strncpy(criteo_entries[i].product_price, ps,
-                        sizeof criteo_entries[i].product_price);
+                memcpy(criteo_entries[i].product_price, ps,
+                       sizeof criteo_entries[i].product_price);
             else if (j == 6)
-                strncpy(criteo_entries[i].product_age_group, ps,
-                        sizeof criteo_entries[i].product_age_group);
+                memcpy(criteo_entries[i].product_age_group, ps,
+                       sizeof criteo_entries[i].product_age_group);
             else if (j == 9)
-                strncpy(criteo_entries[i].product_gender, ps,
-                        sizeof criteo_entries[i].product_gender);
+                memcpy(criteo_entries[i].product_gender, ps,
+                       sizeof criteo_entries[i].product_gender);
             else if (j == 19) {
+                assert(strlen(ps) == 2 || strlen(ps) == 32);
                 assert(*ps);  // product_id should not be empty string
                 if (*ps == '-')
                     // but in case of "-1", we see it as "0000..."
@@ -138,6 +139,7 @@ static void __load_criteo_data(const char* criteo_filename)
                 else
                     hexcpy(criteo_entries[i].product_id, ps, 32);
             } else if (j == 22) {
+                assert(strlen(ps) == 32);
                 assert(*ps);         // user_id should not be empty string
                 assert(*ps != '-');  // or "-1"
                 hexcpy(criteo_entries[i].user_id, ps, 32);
