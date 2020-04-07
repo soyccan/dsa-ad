@@ -1,0 +1,2 @@
+should the compilation or runtime failed,
+try run again with "make PAR=0"

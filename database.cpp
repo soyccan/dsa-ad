@@ -99,7 +99,7 @@ static void __load_criteo_data(const char* criteo_filename)
 
     // O_DIRECT to bypass kernel buffer cache
     // though not much effiency improvement
-    G(fd = open(criteo_filename, O_RDONLY | O_DIRECT));
+    G(fd = open(criteo_filename, O_RDONLY)); // | O_DIRECT));
     GG(fs = fdopen(fd, "r"), NULL);
 
     // 0x400 is enough to handle longest line

@@ -67,6 +67,6 @@ clean:
 	rm -rf $(OBJS) demo
 
 pack:
-	mkdir b07902143_dsa_hw2
-	cp $(SRC) Makefile b07902143_dsa_hw2
+	-mkdir b07902143_dsa_hw2
+	cp $(SRC) Makefile README b07902143_dsa_hw2
 	zip -r b07902143_dsa_hw2.zip b07902143_dsa_hw2
